@@ -1,5 +1,9 @@
-import { all, call, fork, put, takeEvery } from '@redux-saga/core/effects';
-import { GET_LATEST_NEWS, GET_POPULAR_NEWS, SET_LATEST_NEWS_ERROR, SET_POPULAR_NEWS_ERROR } from "../constants";
+import { call, put, takeEvery, select, throttle } from '@redux-saga/core/effects';
+import {
+  SET_CURRENT_PATHNAME,
+  SET_LATEST_NEWS_ERROR, SET_LOADING_DATA,
+  SET_POPULAR_NEWS_ERROR
+} from "../constants";
 import { getLatestNews, getPopularNews } from '../../api'
 import { setLatestNews, setPopularNews } from "../actions/actionCreator";
 
@@ -21,17 +25,25 @@ export function* handlePopularNews() {
   }
 }
 
-export function* watchPopularSaga() {
-  yield takeEvery(GET_POPULAR_NEWS, handlePopularNews);
-}
+export function* watchNewsSaga() {
+  yield put({ type: SET_LOADING_DATA, payload: true });
+  const pathname = yield select(({ location }) => location.pathname );
 
-export function* watchLatestSaga() {
-  yield takeEvery(GET_LATEST_NEWS, handleLatestNews);
+  switch(pathname) {
+    case '/popular-news':
+      yield call(handlePopularNews);
+      break;
+    case '/latest-news':
+      yield call(handleLatestNews);
+      break;
+    default:
+      break;
+  }
+
+  yield put({ type: SET_LOADING_DATA, payload: false });
 }
 
 export default function* rootSaga() {
-  yield all([
-    fork(watchPopularSaga),
-    fork(watchLatestSaga)
-  ])
+  yield throttle(5000, SET_CURRENT_PATHNAME, () => console.log('path changed'));
+  yield takeEvery(SET_CURRENT_PATHNAME, watchNewsSaga);
 }
